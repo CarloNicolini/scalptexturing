@@ -17,7 +17,7 @@ try
     AssertGLSL;
     A=imread([pwd '/probes_img/probe_planar.bmp']);
     mytex = Screen('MakeTexture', win, A, [], 1);
-    [gltex, gltextarget] = Screen('GetOpenGLTexture', win, mytex);
+    [gltex, GL_TEXTURE_2D] = Screen('GetOpenGLTexture', win, mytex);
     Screen('BeginOpenGL', win);
     ar=winRect(4)/winRect(3);
     glEnable(GL_DEPTH_TEST);
@@ -26,55 +26,74 @@ try
     gluPerspective(25,1/ar,0.1,1000);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity;
+    glEnable(GL_BLEND);
+    glEnable(GL_POINT_SMOOTH);
+    glPointSize(1);
+    % Offset for polygon and filling
+    glPolygonOffset(-1.0, -1.0); % Shift depth value
+    glEnable(GL_POLYGON_OFFSET_LINE);
+    
     %glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
     
-    glEnable(gltextarget);
-    glBindTexture(gltextarget, gltex);
-    glTexEnvfv(GL.TEXTURE_ENV, GL.TEXTURE_ENV_MODE, GL.MODULATE);
-    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_S, GL.REPEAT);
-    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_T, GL.REPEAT);
-    
-    glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR_MIPMAP_LINEAR);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, gltex);
+    glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); %parameters can be GL_REPEAT, GL_CLAMP, GL_CLAMP_TO_EDGE
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     
     % Need mipmapping for trilinear filtering --> Create mipmaps:
-    if ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_framebuffer_object'))
+    if ~isempty(findstr(glGetString(GL_EXTENSIONS), 'GL_EXT_framebuffer_object'))
         % Ask the hardware to generate all depth levels automatically:
-        glGenerateMipmapEXT(GL.TEXTURE_2D);
+        glGenerateMipmapEXT(GL_TEXTURE_2D);
     else
         % No hardware support for fast auto-mipmap-generation. Do it "manually":
         % Use GLU to compute the image resolution mipmap pyramid and create
         % OpenGL textures ouf of it: This is slow, compared to glGenerateMipmapEXT:
-        if gluBuild2DMipmaps(gltextarget, GL.LUMINANCE, size(myimg,1), size(myimg,2), GL.LUMINANCE, GL.UNSIGNED_BYTE, uint8(myimg)) > 0
+        if gluBuild2DMipmaps(GL_TEXTURE_2D, GL_LUMINANCE, size(myimg,1), size(myimg,2), GL_LUMINANCE, GL_UNSIGNED_BYTE, uint8(myimg)) > 0
             error('gluBuild2DMipmaps failed for some reason.');
         end
     end
     % Use bilinear filtering for magnification filter:
-    glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
-    shader = LoadGLSLProgramFromFiles([pwd '/BasicShader'], 2);
-    glUseProgram(shader);glCheckLastError;
+    % Load the shader for texturing
+    texture_shader = LoadGLSLProgramFromFiles([pwd '/TextureShader'], 2);
+    % Load the shader for showing normals on vertices
+    normal_shader = LoadGLSLProgramFromFiles([pwd '/NormalShader'], 2);
     
     angle = 0;
     while (true)
-        angle=angle+5;
+        %angle=angle+5;
         % Setup cubes rotation around axis:
         glClear;
-        % Draw the scene with the object
+        % Draw the scene with the textured object
+        glUseProgram(texture_shader);
         glPushMatrix;
-        glTranslated(0,0,-350);
+        glTranslated(0,0,-300);
         glRotated(angle,0,1,0);
         % Here we draw the mesh
-        glEnableClientState(GL.VERTEX_ARRAY);
-        glVertexPointer(3, GL.FLOAT, 0, V(:));
-        glActiveTexture(GL.TEXTURE0);
-        glEnableClientState(GL.TEXTURE_COORD_ARRAY);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 0, V(:));
+        glActiveTexture(GL_TEXTURE0);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
         glTexCoordPointer(2,GL_FLOAT,0,UV(:));
         % Finally draw elements
-        glDrawElements(GL.TRIANGLES, length(I(:)), GL.UNSIGNED_SHORT, I);
+        glDrawElements(GL_TRIANGLES, length(I(:)), GL_UNSIGNED_SHORT, I);
         % Disable texture coord array
-        glDisableClientState(GL.TEXTURE_COORD_ARRAY);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
         % Disable vertex array...
-        glDisableClientState(GL.VERTEX_ARRAY);
+        glDisableClientState(GL_VERTEX_ARRAY);
+     
+        % Draw the red points
+        glUseProgram(normal_shader);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 0, V(:));
+        glEnableClientState(GL_NORMAL_ARRAY);
+        glNormalPointer(GL_FLOAT,0,N(:));
+        glDrawArrays(GL_POINTS,0,size(V,2));
+        glDisableClientState(GL_NORMAL_ARRAY);
+        glDisableClientState(GL_VERTEX_ARRAY);
         glPopMatrix;
         
         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
