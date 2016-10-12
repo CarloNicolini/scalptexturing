@@ -1,0 +1,9 @@
+function arcball = arcball_init(radius, width, height)
+	arcball.ballradius = radius;
+	arcball.isrotating = false;
+	arcball.width = width;
+	arcball.height = height;
+	arcball.start_matrix = eye(4);
+	arcball.init_fov = 25;
+	arcball.translation_factor = 0.01;
+	arcball = arcball_reset(arcball);

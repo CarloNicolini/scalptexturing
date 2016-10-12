@@ -4,7 +4,8 @@ Screen('CloseAll');
 clear all;
 close all;
 
-L = LoadOBJFile('ScalpSurfaceMeshUV.obj');
+%L = LoadOBJFile('ScalpSurfaceMeshUV.obj');
+%L = LoadOBJFile('ScalpSubSelect.obj');
 KbName('UnifyKeyNames');
 %L=LoadOBJFile('~/workspace/cncsvision/data/objmodels/happyBuddha.obj');
 % Compute the normals to the mesh surface 

@@ -12,7 +12,7 @@ try
     pars.oldSkipSyncTests = Screen('Preference','SkipSyncTests',2);
     openglstyle=1; debuglevel=3;
     InitializeMatlabOpenGL(openglstyle,debuglevel);
-    [win , winRect] = Screen('OpenWindow', screenid,[],[0 0 640 480]);
+    [win , winRect] = Screen('OpenWindow', screenid,[],[0 0 1024 768]);
     AssertOpenGL;
     AssertGLSL;
     A=imread([pwd '/probes_img/probe_planar.bmp']);
@@ -38,7 +38,7 @@ try
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, gltex);
     glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); %parameters can be GL_REPEAT, GL_CLAMP, GL_CLAMP_TO_EDGE
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); % parameters can be GL_REPEAT, GL_CLAMP, GL_CLAMP_TO_EDGE
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     
@@ -61,17 +61,36 @@ try
     texture_shader = LoadGLSLProgramFromFiles([pwd '/TextureShader'], 2);
     % Load the shader for showing normals on vertices
     normal_shader = LoadGLSLProgramFromFiles([pwd '/NormalShader'], 2);
-    
+    addpath('arcball/');
+    arcball = arcball_init(300,1024,768);
     angle = 0;
+    prevbutton=[0 0 0];
+    prevxy=[0 0];
+    object_z = -300;
+    [mouseIndex,prodname,allinfo] = GetMouseIndices;
     while (true)
-        %angle=angle+5;
-        % Setup cubes rotation around axis:
+        [mousex,mousey,mouse_buttons] = GetMouse(win);
+        %[x y buttons]
+        if (mouse_buttons(2)==1) && (prevbutton(2)==0)
+            arcball = arcball_start_rotation(arcball,mousex,mousey);
+        end
+        if (mouse_buttons(2)==1)
+            arcball = arcball_update_rotation(arcball,mousex,mousey);
+        end
+        if (mouse_buttons(2)==0) && (prevbutton(2)==1)
+            arcball = arcball_stop_rot(arcball);
+        end
+        if (mouse_buttons(3)==1)
+            object_z = object_z + mousey-prevxy(2);
+        end
+        prevbutton = mouse_buttons;
+        prevxy = [mousex,mousey];
         glClear;
         % Draw the scene with the textured object
         glUseProgram(texture_shader);
         glPushMatrix;
-        glTranslated(0,0,-300);
-        glRotated(angle,0,1,0);
+        glTranslated(0,0,object_z);
+        arcball = arcball_apply_rot_mat(arcball);
         % Here we draw the mesh
         glEnableClientState(GL_VERTEX_ARRAY);
         glVertexPointer(3, GL_FLOAT, 0, V(:));
@@ -84,8 +103,8 @@ try
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
         % Disable vertex array...
         glDisableClientState(GL_VERTEX_ARRAY);
-     
-        % Draw the red points
+        
+        % Draw the points
         glUseProgram(normal_shader);
         glEnableClientState(GL_VERTEX_ARRAY);
         glVertexPointer(3, GL_FLOAT, 0, V(:));
@@ -94,6 +113,8 @@ try
         glDrawArrays(GL_POINTS,0,size(V,2));
         glDisableClientState(GL_NORMAL_ARRAY);
         glDisableClientState(GL_VERTEX_ARRAY);
+        %
+        % END DRAWING
         glPopMatrix;
         
         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
