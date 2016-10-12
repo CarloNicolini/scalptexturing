@@ -67,12 +67,12 @@ try
     prevbutton=[0 0 0];
     prevxy=[0 0];
     object_z = -300;
-    [mouseIndex,prodname,allinfo] = GetMouseIndices;
+    %[mouseIndex,prodname,allinfo] = GetMouseIndices;
     while (true)
         [mousex,mousey,mouse_buttons] = GetMouse(win);
         %[x y buttons]
         if (mouse_buttons(2)==1) && (prevbutton(2)==0)
-            arcball = arcball_start_rotation(arcball,mousex,mousey);
+            arcball = arcball_start_rotation(arcball, mousex, mousey);
         end
         if (mouse_buttons(2)==1)
             arcball = arcball_update_rotation(arcball,mousex,mousey);
@@ -85,12 +85,14 @@ try
         end
         prevbutton = mouse_buttons;
         prevxy = [mousex,mousey];
-        glClear;
         % Draw the scene with the textured object
         glUseProgram(texture_shader);
         glPushMatrix;
-        glTranslated(0,0,object_z);
+        glClear;
         arcball = arcball_apply_rot_mat(arcball);
+        %glTranslated(0,0,object_z);
+        
+        last_mat = reshape(glGetDoublev(GL_MODELVIEW_MATRIX),[4 4])
         % Here we draw the mesh
         glEnableClientState(GL_VERTEX_ARRAY);
         glVertexPointer(3, GL_FLOAT, 0, V(:));
