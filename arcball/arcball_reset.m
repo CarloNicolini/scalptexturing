@@ -2,7 +2,7 @@ function arcball = arcball_reset(arcball)
 
 	arcball.fov = arcball.init_fov;
 
-	arcball.start_mat = eye(4);
+	arcball.cur_mv_mat = eye(4);
 
 	arcball.tx = 0;
 	arcball.ty = 0;

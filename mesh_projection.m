@@ -1,9 +1,13 @@
-function mesh_projection(obj, obj_index, centering)
+function mesh_projection(obj_scalp_full, obj_scalp_portion)
 
-V = single( obj{obj_index}.vertices);
-N = single(obj{obj_index}.normals);
-UV = single(obj{obj_index}.texcoords);
-I = uint16((obj{obj_index}.faces));
+ScalpV = single( obj_scalp_full{1}.vertices);
+ScalpN = single(obj_scalp_full{1}.normals);
+ScalpI = uint16((obj_scalp_full{1}.faces));
+
+PortionV = single( obj_scalp_portion{1}.vertices);
+PortionN = single(obj_scalp_portion{1}.normals);
+PortionUV = single(obj_scalp_portion{1}.texcoords);
+PortionI = uint16((obj_scalp_portion{1}.faces));
 
 try
     pars.oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
@@ -61,63 +65,78 @@ try
     texture_shader = LoadGLSLProgramFromFiles([pwd '/TextureShader'], 2);
     % Load the shader for showing normals on vertices
     normal_shader = LoadGLSLProgramFromFiles([pwd '/NormalShader'], 2);
-    addpath('arcball/');
+    
     arcball = arcball_init(300,1024,768);
     angle = 0;
     prevbutton=[0 0 0];
     prevxy=[0 0];
-    object_z = -300;
+    object_z = -450;
     %[mouseIndex,prodname,allinfo] = GetMouseIndices;
+    deltast=[0 0];
     while (true)
+        glClear;
         [mousex,mousey,mouse_buttons] = GetMouse(win);
         %[x y buttons]
         if (mouse_buttons(2)==1) && (prevbutton(2)==0)
             arcball = arcball_start_rotation(arcball, mousex, mousey);
+            disp('justpressed');
         end
-        if (mouse_buttons(2)==1)
+        if (mouse_buttons(2)==1 && prevbutton(2)==1)
             arcball = arcball_update_rotation(arcball,mousex,mousey);
+            disp('updating');
         end
         if (mouse_buttons(2)==0) && (prevbutton(2)==1)
             arcball = arcball_stop_rot(arcball);
+            disp('stopping');
         end
         if (mouse_buttons(3)==1)
             object_z = object_z + mousey-prevxy(2);
         end
-        prevbutton = mouse_buttons;
-        prevxy = [mousex,mousey];
-        % Draw the scene with the textured object
-        glUseProgram(texture_shader);
-        glPushMatrix;
-        glClear;
-        arcball = arcball_apply_rot_mat(arcball);
-        %glTranslated(0,0,object_z);
         
-        last_mat = reshape(glGetDoublev(GL_MODELVIEW_MATRIX),[4 4])
-        % Here we draw the mesh
+        
+        % Draw the scene with the full scalp shown as mesh
+        glUseProgram(texture_shader);
+        % Change the texture displacement on the fragment shader
+        glUniform2f(glGetUniformLocation(texture_shader, 'deltast'),deltast(1),deltast(2));
+        glPushMatrix;
+        glTranslated(0,0,object_z);
+        arcball = arcball_apply_rot_mat(arcball);
+        glRotated(30,0,1,0);
+        [MV_MAT,P_MAT,VIEW]=getMVP();
+        [objx, objy, objz] = unprojectMouse(mousex,mousey,object_z/300,P_MAT,MV_MAT,VIEW);
+        o =  [objx, objy, object_z];
+        
+        % Here we draw the textured mesh portion
         glEnableClientState(GL_VERTEX_ARRAY);
-        glVertexPointer(3, GL_FLOAT, 0, V(:));
+        glVertexPointer(3, GL_FLOAT, 0, PortionV(:));
         glActiveTexture(GL_TEXTURE0);
         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glTexCoordPointer(2,GL_FLOAT,0,UV(:));
+        glTexCoordPointer(2,GL_FLOAT,0,PortionUV(:));
         % Finally draw elements
-        glDrawElements(GL_TRIANGLES, length(I(:)), GL_UNSIGNED_SHORT, I);
+        glDrawElements(GL_TRIANGLES, length(PortionI(:)), GL_UNSIGNED_SHORT, PortionI);
         % Disable texture coord array
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
         % Disable vertex array...
         glDisableClientState(GL_VERTEX_ARRAY);
         
-        % Draw the points
+        % Here we draw the full mesh as triangles
         glUseProgram(normal_shader);
         glEnableClientState(GL_VERTEX_ARRAY);
-        glVertexPointer(3, GL_FLOAT, 0, V(:));
+        glVertexPointer(3, GL_FLOAT, 0, ScalpV(:));
         glEnableClientState(GL_NORMAL_ARRAY);
-        glNormalPointer(GL_FLOAT,0,N(:));
-        glDrawArrays(GL_POINTS,0,size(V,2));
+        glNormalPointer(GL_FLOAT,0,ScalpN(:));
+        glDrawElements(GL_TRIANGLES, length(ScalpI(:)), GL_UNSIGNED_SHORT, ScalpI);
+        glUseProgram(0);
+        glVertexPointer(3, GL_FLOAT, 0, o(:));
+        %glDrawArrays(GL_POINTS,0,1);
         glDisableClientState(GL_NORMAL_ARRAY);
         glDisableClientState(GL_VERTEX_ARRAY);
-        %
+        cur_mat = reshape(glGetDoublev(GL_MODELVIEW_MATRIX),[4 4]);
         % END DRAWING
         glPopMatrix;
+        
+        prevbutton = mouse_buttons;
+        prevxy = [mousex,mousey];
         
         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
         Screen('EndOpenGL', win);
@@ -130,6 +149,19 @@ try
         if keyIsDown && keyCode(KbName('Escape'))
             break;
         end;
+        if keyIsDown && keyCode(KbName('LeftArrow'))
+            deltast(1) = deltast(1)+0.01;
+        end
+        if keyIsDown && keyCode(KbName('RightArrow'))
+            deltast(1) = deltast(1)-0.01;
+        end
+        if keyIsDown && keyCode(KbName('UpArrow'))
+            deltast(2) = deltast(2)+0.01;
+        end
+        if keyIsDown && keyCode(KbName('DownArrow'))
+            deltast(2) = deltast(2)-0.01;
+        end
+        
     end
     % Shut down OpenGL rendering:
     Screen('EndOpenGL', win);

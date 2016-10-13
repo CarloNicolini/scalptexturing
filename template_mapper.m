@@ -1,14 +1,19 @@
 addpath(genpath('~/Psychtoolbox/'));
-
+addpath('arcball/');
 Screen('CloseAll');
 clear all;
 close all;
-
-%L = LoadOBJFile('ScalpSurfaceMeshUV.obj');
-%L = LoadOBJFile('ScalpSubSelect.obj');
 KbName('UnifyKeyNames');
-%L=LoadOBJFile('~/workspace/cncsvision/data/objmodels/happyBuddha.obj');
-% Compute the normals to the mesh surface 
-%LN = AddNormalsToOBJ(L);
 
-mesh_projection(L,1,true);
+
+ScalpOBJ = LoadOBJFile2('ScalpSurfaceMesh.obj');
+%if ~isfield(ScalpOBJ.normals)
+    ScalpOBJ = AddNormalsToOBJ(ScalpOBJ);
+%end
+
+PortionOBJ = LoadOBJFile2('Portion_rightside.obj');
+%if ~isfield(PortionOBJ.normals)
+%    PortionOBJ = AddNormalsToOBJ(PortionOBJ);
+%end
+
+mesh_projection(ScalpOBJ,PortionOBJ);

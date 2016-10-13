@@ -13,5 +13,5 @@ if arcball.isrotating
 		glRotated(rot_angle*2,-rot_axis(1),-rot_axis(2),-rot_axis(3));
 		arcball = arcball_apply_trans_mat(arcball,false);
 	end
-	glMultMatrixd(arcball.start_matrix);
+	glMultMatrixd(arcball.cur_mv_mat);
 end
