@@ -68,40 +68,44 @@ try
     
     arcball = arcball_init(300,1024,768);
     angle = 0;
-    prevbutton=[0 0 0];
-    prevxy=[0 0];
+    
+    
     object_z = -450;
     %[mouseIndex,prodname,allinfo] = GetMouseIndices;
     deltast=[0 0];
+    mousex=0;mousey=0;mouse_buttons=[0 0 0];
+    prevbutton=[0 0 0];
     while (true)
         glClear;
+        prevbutton = mouse_buttons;
+        prevxy = [mousex,mousey];
         [mousex,mousey,mouse_buttons] = GetMouse(win);
         %[x y buttons]
+        glPushMatrix;
+        glTranslated(0,0,object_z);
+        arcball = arcball_apply_rot_mat(arcball);
+        
         if (mouse_buttons(2)==1) && (prevbutton(2)==0)
             arcball = arcball_start_rotation(arcball, mousex, mousey);
             disp('justpressed');
         end
-        if (mouse_buttons(2)==1 && prevbutton(2)==1)
+        if mouse_buttons(2)==1 && (prevbutton(2)==1)
             arcball = arcball_update_rotation(arcball,mousex,mousey);
             disp('updating');
         end
         if (mouse_buttons(2)==0) && (prevbutton(2)==1)
-            arcball = arcball_stop_rot(arcball);
+            %arcball = arcball_stop_rot(arcball);
             disp('stopping');
         end
         if (mouse_buttons(3)==1)
             object_z = object_z + mousey-prevxy(2);
         end
-        
-        
+                
         % Draw the scene with the full scalp shown as mesh
         glUseProgram(texture_shader);
         % Change the texture displacement on the fragment shader
         glUniform2f(glGetUniformLocation(texture_shader, 'deltast'),deltast(1),deltast(2));
-        glPushMatrix;
-        glTranslated(0,0,object_z);
-        arcball = arcball_apply_rot_mat(arcball);
-        glRotated(30,0,1,0);
+
         [MV_MAT,P_MAT,VIEW]=getMVP();
         [objx, objy, objz] = unprojectMouse(mousex,mousey,object_z/300,P_MAT,MV_MAT,VIEW);
         o =  [objx, objy, object_z];
@@ -131,12 +135,8 @@ try
         %glDrawArrays(GL_POINTS,0,1);
         glDisableClientState(GL_NORMAL_ARRAY);
         glDisableClientState(GL_VERTEX_ARRAY);
-        cur_mat = reshape(glGetDoublev(GL_MODELVIEW_MATRIX),[4 4]);
         % END DRAWING
         glPopMatrix;
-        
-        prevbutton = mouse_buttons;
-        prevxy = [mousex,mousey];
         
         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
         Screen('EndOpenGL', win);
