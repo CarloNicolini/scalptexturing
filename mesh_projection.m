@@ -1,4 +1,4 @@
-function mesh_projection(obj_scalp_full, obj_scalp_portion)
+function mesh_projection(obj_scalp_full, obj_scalp_portion, ellipsoid)
 
 ScalpV = single( obj_scalp_full{1}.vertices);
 ScalpN = single(obj_scalp_full{1}.normals);
@@ -8,6 +8,7 @@ PortionV = single( obj_scalp_portion{1}.vertices);
 PortionN = single(obj_scalp_portion{1}.normals);
 PortionUV = single(obj_scalp_portion{1}.texcoords);
 PortionI = uint16((obj_scalp_portion{1}.faces));
+
 
 try
     pars.oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
@@ -19,7 +20,7 @@ try
     [win , winRect] = Screen('OpenWindow', screenid,[],[0 0 1024 768]);
     AssertOpenGL;
     AssertGLSL;
-    A=imread([pwd '/probes_img/probe_planar.bmp']);
+    A=imread([pwd '/probes_img/probe_planar2.bmp']);
     mytex = Screen('MakeTexture', win, A, [], 1);
     [gltex, GL_TEXTURE_2D] = Screen('GetOpenGLTexture', win, mytex);
     Screen('BeginOpenGL', win);
@@ -36,7 +37,6 @@ try
     % Offset for polygon and filling
     glPolygonOffset(-1.0, -1.0); % Shift depth value
     glEnable(GL_POLYGON_OFFSET_LINE);
-    
     %glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
     
     glEnable(GL_TEXTURE_2D);
@@ -87,15 +87,15 @@ try
         
         if (mouse_buttons(2)==1) && (prevbutton(2)==0)
             arcball = arcball_start_rotation(arcball, mousex, mousey);
-            disp('justpressed');
+            %disp('justpressed');
         end
         if mouse_buttons(2)==1 && (prevbutton(2)==1)
             arcball = arcball_update_rotation(arcball,mousex,mousey);
-            disp('updating');
+            %disp('updating');
         end
         if (mouse_buttons(2)==0) && (prevbutton(2)==1)
             %arcball = arcball_stop_rot(arcball);
-            disp('stopping');
+            %disp('stopping');
         end
         if (mouse_buttons(3)==1)
             object_z = object_z + mousey-prevxy(2);
@@ -110,18 +110,18 @@ try
         [objx, objy, objz] = unprojectMouse(mousex,mousey,object_z/300,P_MAT,MV_MAT,VIEW);
         o =  [objx, objy, object_z];
         
-        % Here we draw the textured mesh portion
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glVertexPointer(3, GL_FLOAT, 0, PortionV(:));
-        glActiveTexture(GL_TEXTURE0);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glTexCoordPointer(2,GL_FLOAT,0,PortionUV(:));
-        % Finally draw elements
-        glDrawElements(GL_TRIANGLES, length(PortionI(:)), GL_UNSIGNED_SHORT, PortionI);
-        % Disable texture coord array
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        % Disable vertex array...
-        glDisableClientState(GL_VERTEX_ARRAY);
+%         % Here we draw the textured mesh portion
+%         glEnableClientState(GL_VERTEX_ARRAY);
+%         glVertexPointer(3, GL_FLOAT, 0, PortionV(:));
+%         glActiveTexture(GL_TEXTURE0);
+%         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+%         glTexCoordPointer(2,GL_FLOAT,0,PortionUV(:));
+%         % Finally draw elements
+%         glDrawElements(GL_TRIANGLES, length(PortionI(:)), GL_UNSIGNED_SHORT, PortionI);
+%         % Disable texture coord array
+%         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+%         % Disable vertex array...
+%         glDisableClientState(GL_VERTEX_ARRAY);
         
         % Here we draw the full mesh as triangles
         glUseProgram(normal_shader);
@@ -132,11 +132,36 @@ try
         glDrawElements(GL_TRIANGLES, length(ScalpI(:)), GL_UNSIGNED_SHORT, ScalpI);
         glUseProgram(0);
         glVertexPointer(3, GL_FLOAT, 0, o(:));
-        %glDrawArrays(GL_POINTS,0,1);
+        glDrawArrays(GL_POINTS,0,1);
         glDisableClientState(GL_NORMAL_ARRAY);
         glDisableClientState(GL_VERTEX_ARRAY);
+        
+        glColor3d(1,1,1);
+        glPointSize(10);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 0, ellipsoid.X(:));
+        glDrawArrays(GL_POINTS,0,size(ellipsoid.X,2));
+        glDisableClientState(GL_VERTEX_ARRAY);
+        
+        p = single(ellipsoid.X(:,10:12));
+        glColor3d(1,0,0);
+        glPointSize(20);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3, GL_FLOAT, 0, p);
+        glDrawArrays(GL_POINTS,0,size(p,2));
+        glDisableClientState(GL_VERTEX_ARRAY);
+       
+        r = ellipsoid.radii(1);
+        A = eye(4); A(1:3,1:3)=ellipsoid.evecs; A(1:3,4)=ellipsoid.center;
+        glColor3d(0.5,0.5,0.5);
+        glPushMatrix();
+        glMultMatrixd(A);
+        glScaled(1,ellipsoid.radii(2)/r,ellipsoid.radii(3)/r);
+        glutWireSphere(r,200,200);
+        glPopMatrix();
+ 
         % END DRAWING
-        glPopMatrix;
+        glPopMatrix;        
         
         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
         Screen('EndOpenGL', win);

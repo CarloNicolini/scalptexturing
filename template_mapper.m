@@ -16,4 +16,8 @@ PortionOBJ = LoadOBJFile2('Portion_rightside.obj');
 %    PortionOBJ = AddNormalsToOBJ(PortionOBJ);
 %end
 
-mesh_projection(ScalpOBJ,PortionOBJ);
+% Calculate the ellipsoid parameters
+ellipsoid.X = single(dlmread('allcoords.txt'))';
+[ ellipsoid.center, ellipsoid.radii, ellipsoid.evecs, ellipsoid.v, ellipsoid.chi2 ] = ellipsoid_fit(ellipsoid.X');
+
+mesh_projection(ScalpOBJ,PortionOBJ,ellipsoid);
