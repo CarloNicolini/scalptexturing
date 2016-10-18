@@ -75,6 +75,7 @@ try
     deltast=[0 0];
     mousex=0;mousey=0;mouse_buttons=[0 0 0];
     prevbutton=[0 0 0];
+    nodeid=1;
     while (true)
         glClear;
         prevbutton = mouse_buttons;
@@ -100,28 +101,28 @@ try
         if (mouse_buttons(3)==1)
             object_z = object_z + mousey-prevxy(2);
         end
-                
+        
         % Draw the scene with the full scalp shown as mesh
         glUseProgram(texture_shader);
         % Change the texture displacement on the fragment shader
         glUniform2f(glGetUniformLocation(texture_shader, 'deltast'),deltast(1),deltast(2));
-
+        
         [MV_MAT,P_MAT,VIEW]=getMVP();
         [objx, objy, objz] = unprojectMouse(mousex,mousey,object_z/300,P_MAT,MV_MAT,VIEW);
         o =  [objx, objy, object_z];
         
-%         % Here we draw the textured mesh portion
-%         glEnableClientState(GL_VERTEX_ARRAY);
-%         glVertexPointer(3, GL_FLOAT, 0, PortionV(:));
-%         glActiveTexture(GL_TEXTURE0);
-%         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-%         glTexCoordPointer(2,GL_FLOAT,0,PortionUV(:));
-%         % Finally draw elements
-%         glDrawElements(GL_TRIANGLES, length(PortionI(:)), GL_UNSIGNED_SHORT, PortionI);
-%         % Disable texture coord array
-%         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-%         % Disable vertex array...
-%         glDisableClientState(GL_VERTEX_ARRAY);
+        %         % Here we draw the textured mesh portion
+        %         glEnableClientState(GL_VERTEX_ARRAY);
+        %         glVertexPointer(3, GL_FLOAT, 0, PortionV(:));
+        %         glActiveTexture(GL_TEXTURE0);
+        %         glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        %         glTexCoordPointer(2,GL_FLOAT,0,PortionUV(:));
+        %         % Finally draw elements
+        %         glDrawElements(GL_TRIANGLES, length(PortionI(:)), GL_UNSIGNED_SHORT, PortionI);
+        %         % Disable texture coord array
+        %         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        %         % Disable vertex array...
+        %         glDisableClientState(GL_VERTEX_ARRAY);
         
         % Here we draw the full mesh as triangles
         glUseProgram(normal_shader);
@@ -143,14 +144,14 @@ try
         glDrawArrays(GL_POINTS,0,size(ellipsoid.X,2));
         glDisableClientState(GL_VERTEX_ARRAY);
         
-        p = single(ellipsoid.X(:,10:12));
+        p = single(ellipsoid.X(:,nodeid));
         glColor3d(1,0,0);
         glPointSize(20);
         glEnableClientState(GL_VERTEX_ARRAY);
         glVertexPointer(3, GL_FLOAT, 0, p);
         glDrawArrays(GL_POINTS,0,size(p,2));
         glDisableClientState(GL_VERTEX_ARRAY);
-       
+        
         r = ellipsoid.radii(1);
         A = eye(4); A(1:3,1:3)=ellipsoid.evecs; A(1:3,4)=ellipsoid.center;
         glColor3d(0.5,0.5,0.5);
@@ -159,9 +160,9 @@ try
         glScaled(1,ellipsoid.radii(2)/r,ellipsoid.radii(3)/r);
         glutWireSphere(r,200,200);
         glPopMatrix();
- 
+        
         % END DRAWING
-        glPopMatrix;        
+        glPopMatrix;
         
         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
         Screen('EndOpenGL', win);
@@ -185,6 +186,19 @@ try
         end
         if keyIsDown && keyCode(KbName('DownArrow'))
             deltast(2) = deltast(2)-0.01;
+        end
+        
+        if keyIsDown && keyCode(KbName('n'))
+            nodeid = nodeid+1;
+            nodeid = 1+mod(nodeid,289);
+            while KbCheck;
+            end
+        end
+        if keyIsDown && keyCode(KbName('m'))
+            nodeid = nodeid-1;
+            nodeid = 1+mod(nodeid,289);
+            while KbCheck;
+            end
         end
         
     end
